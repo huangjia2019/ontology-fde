@@ -36,7 +36,7 @@ CHROME_BIN=/path/to/chromium uv run --with playwright python tools/capture_scree
 | `01-ontology-workbench.png` | YF-R-0311，业务对象 | 347 元；ERP 返回 not_found；发票状态 unknown |
 | `02-action-console.png` | YF-R-0501，退款处理 | 500.01 元；命中 G-AMOUNT；创建人工审批材料 |
 | `03-audit-trace.png` | YF-R-0610，决策记录 | 风控复核覆盖退款批准建议；两项意见保留；无付款指令 |
-| `04-evaluation-dashboard.png` | 测试与评估 | 核心策略 36/36，事故回放 2/2；候选规则仍有发布阻断项 |
+| `04-evaluation-dashboard.png` | 测试与评估 | 核心策略 36/36，事故回放 2/2；候选规则仍缺开封状态输入、业务审核和编译 |
 
 默认输出目录为 [assets/screenshots](assets/screenshots/)，可通过 `--output-dir` 改到审阅目录。视口为 1600×1000，截图覆盖完整页面，高度随内容变化。
 

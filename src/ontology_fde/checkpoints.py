@@ -40,7 +40,7 @@ CHECKPOINTS: dict[int, CheckpointSpec] = {
         ("docs/artifacts/02-historical-audit.md",),
         ("python3 run.py summary",),
         (
-            "HM-01 至 HM-04 分别对应后续的模式分离、动作记录、独立身份和版本治理，并能找到相应验收。",
+            "第 2 站文档表格列出 HM-01 至 HM-04 的后续验收位置；本检查只确认四个编号均在文档中。行为验证需执行相应命令和测试。",
         ),
     ),
     3: CheckpointSpec(
@@ -53,7 +53,7 @@ CHECKPOINTS: dict[int, CheckpointSpec] = {
         ),
         ("python3 run.py identity",),
         (
-            "技术身份为 agent.cs.refund.001，representation 为 as_itself；负责人、能力、关系与生命周期约定齐全。",
+            "身份配置声明技术身份 agent.cs.refund.001 和 representation: as_itself；IART 四部分、晋级条件、回退条件及数据来源均已登记。technical_id 与权限配置是否一致仍需人工核对。",
         ),
     ),
     4: CheckpointSpec(
@@ -69,7 +69,7 @@ CHECKPOINTS: dict[int, CheckpointSpec] = {
         ),
         ("python3 run.py graph --refund-id YF-R-0311",),
         (
-            "对象图的连线不指向缺失节点；RefundRequest 状态机包含 approved 到 approval_pending_payment 的补偿转换。",
+            "检查五个文件存在、对象配置包含 RefundRequest、状态机声明 approved 到 approval_pending_payment 的转换。来源映射和样例关系不在本检查范围内，需核对 get_case() 及对象关联测试。",
         ),
     ),
     5: CheckpointSpec(
@@ -106,10 +106,10 @@ CHECKPOINTS: dict[int, CheckpointSpec] = {
         (
             "python3 run.py extract-rule "
             "--output artifacts/ch06-rule-draft.json",
-            "python3 run.py run YF-R-0602 --mode draft",
+            "python3 run.py run YF-R-0703 --mode draft",
         ),
         (
-            "24 小时整不命中；缺少签收后的经过时长返回 missing_data；B2B 返回 out_of_scope。采用草稿前仍要补齐输入、完成业务审核和规则编译。",
+            "签收后恰好 24 小时不算超过，规则不触发；缺少经过时长返回 missing_data；B2B 返回 out_of_scope。采用草稿前，还需确定开封事实由谁提供、完成审核与编译，再接入执行程序。",
         ),
     ),
     7: CheckpointSpec(
@@ -126,7 +126,7 @@ CHECKPOINTS: dict[int, CheckpointSpec] = {
             "python3 tools/verify.py",
         ),
         (
-            "未知主体触发 G-ACTOR，退款状态和付款对象均不改变。完整的企业认证与权限集成范围见第 7 站。",
+            "运行未知主体命令，应触发 G-ACTOR，退款状态和付款对象均不改变。本地只核对身份字符串，不验证凭据；集成范围见 docs/artifacts/07-identity-and-permissions.md 的“哪些已经运行，哪些还需要集成”。",
         ),
     ),
     8: CheckpointSpec(
@@ -144,7 +144,7 @@ CHECKPOINTS: dict[int, CheckpointSpec] = {
             "--audit artifacts/ch08-decision-records.jsonl",
         ),
         (
-            "ENV-T-0610 可追踪；RiskAgent:review 覆盖 RefundAgent:approve，两项意见均保留。退款进入 pending_human，创建人工审批材料；风险核实并获得人工批准之前，暂不创建付款指令。",
+            "决策记录的 envelope_id 为 ENV-T-0610，与信封样例一致；RiskAgent:review 覆盖 RefundAgent:approve，两项意见均保留。退款进入 pending_human，创建人工审批材料；风险核实并获得人工批准之前，暂不创建付款指令。",
         ),
     ),
     9: CheckpointSpec(
@@ -184,7 +184,7 @@ CHECKPOINTS: dict[int, CheckpointSpec] = {
             "python3 run.py exit-drill",
         ),
         (
-            "检查配置及交接资料中是否具备写入停用、凭据撤销、未完成任务移交、审计保留和人工处理安排。实际停用需由各系统负责人执行并确认结果。",
+            "核对 production_write: false 的声明、工作负载身份前缀、转人工契约、审计策略引用及文档中的操作名称。PASS 不表示已停用账号或移交业务；逐项判定条件见第 10 站文档。",
         ),
     ),
 }

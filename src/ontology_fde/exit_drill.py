@@ -6,11 +6,9 @@ from .paths import load_structured, project_root
 
 
 def exit_drill_payload() -> dict[str, Any]:
-    """Run a deterministic, non-production rehearsal of the five exit controls.
+    """Check exit-related configuration fields, document tokens and file presence.
 
-    The reference project cannot revoke an enterprise credential or move a real ERP work item.
-    This drill therefore verifies that every handoff has a concrete identity, route and retained
-    evidence, while reporting the simulation boundary in the payload itself.
+    No credentials are revoked, work items transferred or retained assets inspected.
     """
 
     permissions = load_structured("config/policies/permissions.yaml")
@@ -49,7 +47,7 @@ def exit_drill_payload() -> dict[str, Any]:
             and "Revoke credentials" in drill_doc,
             {
                 "principal": security_principal,
-                "receipt": "drill-only: credential revocation owner and target resolved",
+                "receipt": "configuration check only: workload principal and revocation instruction found; no credentials revoked",
             },
         ),
         _step(

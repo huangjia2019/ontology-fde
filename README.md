@@ -10,9 +10,9 @@
 
 客户申请退还 347 元，低于公司规定的 500 元自动审批上限。客服 Agent 查了订单和发票，ERP 返回 `not_found`。此时能批准退款吗？
 
-还缺一项判断依据：没有查到发票，可能是尚未开票，也可能是记录没有同步。程序把这次查询结果记为 `unknown`，转交人工核实。另一笔 500 元的申请，因为发票、风控和证据等条件全部满足，反而可以自动批准。
+云帆案例的退款规则要求：已开票的订单先由财务处理冲红，之后才允许自动创建付款指令。没有查到发票，可能是尚未开票，也可能是记录没有同步。程序把发票状态记为 `unknown`，转交人工核实，避免把可能已开票的订单当作未开票处理。另一笔 500 元的申请，因为发票、风控和证据等条件全部满足，自动批准。
 
-这个差别需要落实到系统中。订单与退款申请要通过编号关联，发票状态要有明确来源，批准动作要检查前提，执行记录要保留判断依据。**企业本体定义这些业务对象、关系、状态和动作的含义，使人、Agent 与业务程序能够使用同一套定义。**
+程序需要知道退款对应哪笔订单、哪件商品，发票状态从哪里取得，批准前检查哪些条件。**企业本体定义这些业务对象、关系、状态和动作的含义，使人、Agent 与业务程序能够使用同一套定义。**
 
 本仓库提供书中“云帆退款项目”的可运行实现。可以查看一笔申请如何从原始记录得到处理建议，怎样通过授权与规则检查，再观察付款失败时状态如何变化。
 
@@ -38,7 +38,7 @@ Windows 使用 `py -3 run.py serve --port 8000`。下文命令中的 `python3` �
 
 ![业务对象及来源](docs/assets/screenshots/01-ontology-workbench.png)
 
-这笔申请金额为 347 元。ERP 查询返回 `not_found`，发票状态为 `unknown`，执行后转人工审核。在人工核实发票并批准退款之前，暂不生成付款指令。业务经过见[遥控器单](docs/artifacts/01-field-walkthrough.md)。
+这笔申请金额为 347 元。ERP 查询返回 `not_found`，发票状态为 `unknown`，以 Write 模式执行后转人工审核。在人工核实发票并批准退款之前，暂不生成付款指令。业务经过见[遥控器单](docs/artifacts/01-field-walkthrough.md)。
 
 Read 返回业务事实。Draft 返回处理建议，申请仍处于 `pending_review`。Write 会重新读取事实、核验权限并执行动作：这笔申请转为 `pending_human`，同时创建人工审批材料。
 
@@ -49,16 +49,14 @@ Read 返回业务事实。Draft 返回处理建议，申请仍处于 `pending_re
 | 遥控器单 | YF-R-0311 | 347 元 | 发票状态未知，转人工 |
 | 刚好五百 | YF-R-0500 | 500 元 | 全部条件满足，批准并生成模拟付款指令 |
 | 多出一分 | YF-R-0501 | 500.01 元 | 超过自动批准上限，转人工 |
-| 小额黑名单 | YF-R-0312 | 199 元 | 风控条件不通过，转人工 |
-| 合同优先 | YF-R-0415 | 480 元 | 企业合同客户，转人工核实合同 |
+| 小额黑名单 | YF-R-0312 | 199 元 | 黑名单客户（R3），风控要求拦截（G-RISK），转人工 |
+| 合同优先 | YF-R-0415 | 480 元 | 合同客户（R5）且已开票（R2），转人工核对合同和发票 |
 
 自动批准要求金额不超过 500 元，且其他条件全部满足。`approved` 表示申请已批准，付款指令 `created` 表示指令已建立。真实业务还要取得支付结果，才能确认资金是否到账；本地样例模拟到指令创建这一步。
 
 ![500.01 元申请进入人工审批](docs/assets/screenshots/02-action-console.png)
 
 ## 本体怎样进入程序
-
-前四站从退款业务推导对象和状态，第 5 至 8 站实现动作、规则、授权与协作，最后两站处理故障验证和运行移交。各站包含业务分析、配置说明与运行示例，见[随书目录](docs/book-map.md)。
 
 | 站点 | 内容 |
 |---|---|
@@ -71,9 +69,9 @@ Read 返回业务事实。Draft 返回处理建议，申请仍处于 `pending_re
 | [7. 验证权限](docs/artifacts/07-identity-and-permissions.md) | 身份登记、授权配置与拒绝测试 |
 | [8. 处理协作分歧](docs/artifacts/08-multi-agent-coordination.md) | 任务委托、冲突裁决与人工交接 |
 | [9. 评估和复盘](docs/artifacts/09-evaluation-audit-and-incident-replay.md) | 决策记录、策略评估与事故回放 |
-| [10. 交还组织](docs/artifacts/10-operations-handoff-and-replication.md) | 运行维护、移交与退出检查 |
+| [10. 运行交接](docs/artifacts/10-operations-handoff-and-replication.md) | 运行维护、移交与退出检查 |
 
-例如，第 4 站的检查会核对本体文件、来源映射和样例关系：
+第 4 站的检查确认五份文件存在、对象目录声明了 `RefundRequest`，以及状态机包含 `approved → approval_pending_payment` 这条补偿转换：
 
 ```bash
 python3 run.py checkpoint 4 --check
@@ -89,7 +87,7 @@ python3 run.py run YF-R-0610 --mode write
 python3 run.py run YF-R-0800 --mode write --simulate-payment-failure
 ```
 
-付款指令创建失败后，申请进入 `approval_pending_payment`，生成财务处理任务。
+付款指令创建失败后，申请进入 `approval_pending_payment`（已批准、待付款），并生成财务任务 FMT-0800，交财务核查付款故障。程序保留已经完成的批准记录。
 
 ![协作分歧与决策记录](docs/assets/screenshots/03-audit-trace.png)
 
@@ -103,7 +101,7 @@ python3 run.py run YF-R-0500 --mode write --audit artifacts/my-first-decision.js
 
 每次运行命令，程序都会重新读取样例文件。例如，上一次命令批准了 `YF-R-0500`，修改只存在于当时的内存中；再次运行时，这笔申请仍从待审核开始。这样可以在相同条件下比较不同操作的结果。
 
-要连续查看修改后的申请，可使用 Web 工作台：服务运行期间会保留修改，重置或重启才恢复初始样例。`--audit` 将决策记录写入文件，供事后查看；再次运行时，程序仍从样例文件读取业务数据。详见[状态与审计](docs/architecture.md#本地状态时间与审计)。
+想查看批准后的申请，可使用 Web 工作台：服务运行期间会保留修改，点击“重置演练”或重启服务才恢复初始样例。`--audit` 把决策记录追加到文件。同一命令重复运行会产生相同的决策编号和轨迹编号，比较不同轮次时请分别保存文件，详见[状态与审计](docs/architecture.md#本地状态时间与审计)。
 
 | 模块 | 入口 |
 |---|---|
@@ -114,7 +112,7 @@ python3 run.py run YF-R-0500 --mode write --audit artifacts/my-first-decision.js
 | 对象与动作定义 | [本体配置](config/ontology/)与[动作契约](config/actions/) |
 | 测试与评估 | [测试](tests/)与[评估样例](config/evals/) |
 
-`.yaml` 配置使用 JSON 兼容格式。规则由配置与 Python 代码共同实现，见[架构说明](docs/architecture.md)。
+`.yaml` 文件按 JSON 格式书写，由标准库 `json` 读取。金额上限等参数从配置读取，时限和发票等判断写在 Python 代码中；各文件的用途见[架构说明](docs/architecture.md)。
 
 ## 测试与评估
 
@@ -122,9 +120,9 @@ python3 run.py run YF-R-0500 --mode write --audit artifacts/my-first-decision.js
 python3 tools/verify.py
 ```
 
-检查范围：文档与截图、单元及集成测试、36 个策略样例、2 个事故回放、十站检查卡及退出准备项。失败返回非零退出码。
+检查范围：文档与截图、单元及集成测试、36 个策略样例、2 个事故回放、十站检查卡及退出资料检查（`exit-drill`）。失败返回非零退出码。
 
-策略评估检查“给定这些事实，应作何决定”；引擎测试检查“决定执行以后，状态、付款指令和审计记录是否正确”。两者共同覆盖业务判断和执行行为。测试分组见[测试口径](docs/release-baseline.md)。
+策略评估检查“给定这些事实，应作何决定”；引擎测试检查“决定执行以后，状态、付款指令和审计记录是否正确”。测试分组见[测试口径](docs/release-baseline.md)。
 
 ![策略评估与规则发布条件](docs/assets/screenshots/04-evaluation-dashboard.png)
 

@@ -1,8 +1,8 @@
 # 云帆退款项目：本体、规则与执行
 
-一笔 347 元的退款转人工，一笔 500 元的退款自动批准。金额较小的那笔为什么没有通过？它的发票状态无法确认。退款规则要求金额和其他业务条件同时满足，不能用“小额”代替对事实的核实。
+一笔 347 元的退款转人工，一笔 500 元的退款自动批准。金额较小的那笔为什么没有通过？它的发票状态无法确认。按云帆的 R2 规则，已开票订单需先由财务处理冲红，再自动创建付款指令，因此发票状态也要核实。
 
-这条判断可以沿代码追溯：ERP 查询结果进入来源映射，来源映射把 `not_found` 解释为 `unknown`，策略据此选择人工审批，执行引擎再创建审批材料。下面的十站围绕这笔业务，逐步解释本体如何影响程序。
+这条判断可以沿代码追溯：`repository.py` 的 `get_case()` 在 ERP 查不到发票时将 `invoice_status` 记为 `unknown`，`policy.py` 命中 `G-INVOICE-UNKNOWN`，`engine.py` 创建人工审批材料 HAP-0311。`source_map.yaml` 记录了同一对应关系，供人核对；当前程序没有读取这份映射文件。
 
 ## 观察事实、建议与实际变更
 
@@ -13,7 +13,7 @@ python3 run.py inspect YF-R-0311
 python3 run.py run YF-R-0311 --mode draft
 ```
 
-`inspect` 返回申请、订单、客户等事实及来源引用。ERP 本次查询没有返回发票记录，程序保留这次观测，并将订单的 `invoice_status` 设为 `unknown`。
+`inspect` 返回申请、订单、客户等事实及来源引用。`source_refs` 记录 ERP 查询条件 `order_id=O-9938` 和结果 `observation: not_found`，组装后的业务事实中 `invoice_status` 为 `unknown`。
 
 第二条命令生成建议。结果中 `draft` 的部分字段为：
 
@@ -31,7 +31,7 @@ python3 run.py run YF-R-0311 --mode draft
 python3 run.py run YF-R-0311 --mode write
 ```
 
-结果中的 `decision_record.state_after` 变为 `pending_human`，`outcome` 为 `queued_for_human`。Draft 表达处理意见，Write 执行相应业务动作，两者的状态变化不同。
+Draft 保持申请为 `pending_review`；Write 创建人工审批材料 HAP-0311，将申请改为 `pending_human`。结果中的 `decision_record.outcome` 为 `queued_for_human`。
 
 ## 十站目录
 
@@ -63,7 +63,7 @@ python3 run.py run YF-R-0311 --mode write
                       └─ 创建人工审批材料，等待财务核实
 ```
 
-如果把 `not_found` 映射成 `none`，后面的规则即使完全按配置执行，也可能自动批准一笔事实不清的退款。来源映射本身就是业务设计的一部分。
+如果把 `get_case()` 中查不到发票时返回的 `unknown` 错写成 `none`，策略会把这笔申请当作已确认未开票，自动批准并创建模拟付款指令 PI-0311。发票结果的含义需要财务与 ERP 负责人确认，再落实到代码和来源映射约定中；只修改 `source_map.yaml`，当前程序的结果不会改变。
 
 详细定义见[第 4 站](artifacts/04-minimum-ontology.md)，动作前提见[第 5 站](artifacts/05-action-contract.md)。本地数据与规则均为教学样例，不连接真实财务系统。
 
@@ -82,6 +82,6 @@ python3 run.py checkpoint 4 --check
 python3 tools/verify.py
 ```
 
-`checkpoint 4 --check` 核对本体文件、字段和部分关系约束。`verify.py` 还会运行行为测试，例如 Draft 是否修改状态、相同请求是否重复生成付款指令。检查范围见[测试说明](release-baseline.md)。
+`checkpoint 4 --check` 确认五份文件存在、对象目录声明了 `RefundRequest`、状态机包含批准后转待付款的转换。客户、订单和订单项是否一致，由[关系错误测试](../tests/test_release_guards.py)验证。`verify.py` 还会检查 Draft 是否修改状态、重复请求是否再建付款指令，范围见[测试说明](release-baseline.md)。
 
-配置与代码的分工、进程内状态的保存方式见[架构说明](architecture.md)。分析自己的业务时，可参照[退款项目练习](fde-playbook.md)和[案例分析记录](learning-log.md)。
+配置与代码的分工、进程内状态的保存方式见[架构说明](architecture.md)。分析自己的业务时，可参照[FDE 现场练习](fde-playbook.md)和[案例分析记录](learning-log.md)。

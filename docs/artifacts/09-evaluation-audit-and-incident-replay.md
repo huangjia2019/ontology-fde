@@ -8,7 +8,7 @@
 
 例如，付款失败这笔记录中，`final_action` 仍是 `approve_refund_small`，但 `state_after` 为 `approval_pending_payment`。只读动作名，会误以为全部成功；结合实际效果，才能知道批准已完成，付款仍待处理。
 
-## 运行评估和一次失败
+## 检查策略结果与付款失败记录
 
 ```bash
 python3 run.py evaluate --output artifacts/ch09-eval.json

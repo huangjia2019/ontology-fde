@@ -39,8 +39,8 @@ class RefundPolicy:
             str(action_contract["approval"]["threshold_cny"])
         )
         self.allowed_actors = frozenset(action_contract["actor"]["allowed"])
-        # Human roles remain declarations for an external approval workflow.  This CLI only
-        # authenticates workload identities, so a role label cannot masquerade as an actor ID.
+        # Human roles belong to the external approval workflow. The CLI checks actor IDs
+        # against this allowlist; it does not authenticate workload credentials.
         self.runtime_allowed_actors = frozenset(
             actor for actor in self.allowed_actors if not actor.startswith("role:")
         )

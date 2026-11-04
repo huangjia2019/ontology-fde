@@ -19,7 +19,7 @@
 
 24 小时整不满足“超过”。如果缺少签收时间，应返回缺失数据；用当前时间代替签收时间，会把一笔可能早已超时的申请误算成刚刚签收。对于 B2B 合同客户，要按合同政策继续处理。
 
-还有一个尚未解决的问题：模型没有显式提供商品“已开封”的事实。草稿在 `missing_inputs` 中记录 `opened_state_not_explicitly_modeled`。需要业务人员确定开封状态由谁提供、用什么材料确认，再由工程人员补充输入与验证。
+现有商品数据没有单独记录是否已开封。草稿在 `missing_inputs` 中记录了 `opened_state_not_explicitly_modeled`。业务人员需要确定开封状态由谁提供、用什么材料确认，工程人员再增加字段和检查逻辑。
 
 ## 生成草稿并检查反例
 
@@ -27,7 +27,7 @@
 python3 run.py extract-rule --output artifacts/ch06-rule-draft.json
 ```
 
-提取器使用本地确定性逻辑和模板，生成带来源定位、内容哈希和字段绑定的规则草稿。报告中的测试对应[五类样例](../../config/evals/document_rule_cases.json)：
+提取器使用本地确定性逻辑和模板，生成带来源定位、内容哈希和字段绑定的规则草稿。哈希取自提取时的政策原文，后续可重新计算、比对原文是否变更；当前校验只检查哈希字段存在，尚未执行这项比对。报告中的测试对应[五类样例](../../config/evals/document_rule_cases.json)：
 
 | 输入情况 | 预期结果 | 验证的含义 |
 |---|---|---|
@@ -41,25 +41,27 @@ python3 run.py extract-rule --output artifacts/ch06-rule-draft.json
 
 ## 为什么测试通过还不能发布
 
-报告中的三个阻断项有明确含义：
+报告列出了三项尚未完成的工作：
 
 - `missing_inputs_not_resolved`：尚未落实“已开封”等输入；
 - `human_review_not_completed`：规则负责人尚未确认来源、适用范围和处理办法；
 - `rule_not_compiled`：草稿尚未转换为受检查的可执行规则。
 
-业务负责人需要确认这条规则适用于哪些退款，并明确开封状态由谁提供、用什么材料核实。工程人员再接入该字段，检查缺失和冲突情况，才能让程序按规则执行。测试通过表示已有样例符合预期，这些尚未完成的工作仍须逐项完成。仓库的审核和编译逻辑会检查上述条件，见[规则实现](../../src/ontology_fde/rule_extraction.py)及其[测试](../../tests/test_rule_extraction.py)。
+业务负责人需要确认这条规则适用于哪些退款，并明确开封状态由谁提供、用什么材料核实。工程人员再接入该字段，检查缺失和冲突情况。草稿即使通过样例测试，也不能直接执行：`candidate_execution_guard` 会拒绝未编译的草稿，编译函数则要求草稿已获批准。具体检查见[规则实现](../../src/ontology_fde/rule_extraction.py)及其[测试](../../tests/test_rule_extraction.py)。
 
 ## 新草稿与当前策略的关系
 
-当前退款策略已有 R1–R5，分别处理耗材时限、发票、黑名单、退款频率和合同客户。它们在[规则配置](../../config/rules/refund_rules.yaml)和[策略程序](../../src/ontology_fde/policy.py)中实现。生成草稿后，退款仍按这五条现有规则处理。若要采用新草稿，还需要完成审核并修改执行程序。
+当前退款策略已有 R1–R5，判断逻辑写在[policy.py](../../src/ontology_fde/policy.py)中；[refund_rules.yaml](../../config/rules/refund_rules.yaml)记录规则说明，运行时只读取其中的版本号。R1 处理的就是这条 24 小时政策，但它和草稿一样，用商品类别 `opened_consumable` 代替独立的开封事实。
 
-例如，`YF-R-0602` 由当前策略判断为退款频率异常，命中 R4：
+草稿把这个数据缺口记在 `missing_inputs`，同时补充政策出处、适用范围和各字段的来源与负责人。生成、审核或编译草稿都不会自动替换现有退款策略；要采用新规则，还需要把编译结果接入执行程序。
+
+例如，`YF-R-0703` 申请退一件麦克风防风罩。样例把它归为 `opened_consumable`，申请时间距签收约 59.4 小时，因此当前策略命中 R1，建议转人工：
 
 ```bash
-python3 run.py run YF-R-0602 --mode draft
+python3 run.py run YF-R-0703 --mode draft
 python3 run.py checkpoint 6 --check
 ```
 
-如果未来把政策从 24 小时改为 48 小时，需要同步修改实现并重跑旧案例。原来第 30 小时应转人工的申请，将不再因这项时间条件触发复核；发票和风控检查仍然保留。这样的前后差异，才是规则变更时需要业务负责人审查的内容。
+如果把政策从 24 小时改为 48 小时，需要修改实现并重跑旧案例。原来第 30 小时应转人工的申请，将不再因这项时间条件触发复核；发票和风控检查仍然保留。业务负责人应核对这些处理结果的变化，再批准发布。
 
 [下一站：权限验收](07-identity-and-permissions.md) · [返回十站目录](../book-map.md)。
