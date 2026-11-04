@@ -67,7 +67,7 @@ class WebTests(unittest.TestCase):
         self.assertNotIn("FDE Practical Guide", combined)
         self.assertNotIn('params.get("autorun")', app_js)
         self.assertIn("批准申请、创建付款指令与资金到账分别记录", html)
-        self.assertIn("刷新只清空当前页面的决策显示", html)
+        self.assertIn("刷新页面会清空当前决策显示，但保留业务修改", html)
         self.assertIn("Write 不发起真实支付", html)
         self.assertIn("状态写入、幂等与失败补偿由执行器测试验证", html)
 

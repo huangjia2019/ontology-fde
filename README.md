@@ -38,7 +38,7 @@ Windows 使用 `py -3 run.py serve --port 8000`。下文命令中的 `python3` �
 
 ![业务对象及来源](docs/assets/screenshots/01-ontology-workbench.png)
 
-这笔申请金额为 347 元。ERP 查询返回 `not_found`，发票状态为 `unknown`，执行后转人工审核，不生成付款指令。业务经过见[遥控器单](docs/artifacts/01-field-walkthrough.md)。
+这笔申请金额为 347 元。ERP 查询返回 `not_found`，发票状态为 `unknown`，执行后转人工审核。在人工核实发票并批准退款之前，暂不生成付款指令。业务经过见[遥控器单](docs/artifacts/01-field-walkthrough.md)。
 
 Read 返回业务事实。Draft 返回处理建议，申请仍处于 `pending_review`。Write 会重新读取事实、核验权限并执行动作：这笔申请转为 `pending_human`，同时创建人工审批材料。
 
@@ -52,7 +52,7 @@ Read 返回业务事实。Draft 返回处理建议，申请仍处于 `pending_re
 | 小额黑名单 | YF-R-0312 | 199 元 | 风控条件不通过，转人工 |
 | 合同优先 | YF-R-0415 | 480 元 | 企业合同客户，转人工核实合同 |
 
-自动批准要求金额不超过 500 元，且其他条件全部满足。`approved` 表示申请已批准，付款指令 `created` 不代表资金到账。
+自动批准要求金额不超过 500 元，且其他条件全部满足。`approved` 表示申请已批准，付款指令 `created` 表示指令已建立。真实业务还要取得支付结果，才能确认资金是否到账；本地样例模拟到指令创建这一步。
 
 ![500.01 元申请进入人工审批](docs/assets/screenshots/02-action-console.png)
 
@@ -101,7 +101,9 @@ python3 run.py run YF-R-0311 --mode draft
 python3 run.py run YF-R-0500 --mode write --audit artifacts/my-first-decision.jsonl
 ```
 
-CLI 每次调用重新加载样例。Web 状态保留在服务进程中，重置或重启后恢复初始数据。`--audit` 追加 JSONL 决策记录，不持久化业务状态。
+每次运行命令，程序都会重新读取样例文件。例如，上一次命令批准了 `YF-R-0500`，修改只存在于当时的内存中；再次运行时，这笔申请仍从待审核开始。这样可以在相同条件下比较不同操作的结果。
+
+要连续查看修改后的申请，可使用 Web 工作台：服务运行期间会保留修改，重置或重启才恢复初始样例。`--audit` 将决策记录写入文件，供事后查看；再次运行时，程序仍从样例文件读取业务数据。详见[状态与审计](docs/architecture.md#本地状态时间与审计)。
 
 | 模块 | 入口 |
 |---|---|

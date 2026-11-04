@@ -42,7 +42,7 @@ python3 run.py run YF-R-0311 --mode write
 | [3. 登记执行主体](artifacts/03-identity-acceptance.md) | 谁发起这次动作，谁负责这个 Agent？ | 身份登记、责任归属与生命周期 |
 | [4. 建立最小本体](artifacts/04-minimum-ontology.md) | 如何确认退款、订单和商品属于同一笔业务？ | 对象引用、字段来源与状态机 |
 | [5. 限定业务动作](artifacts/05-action-contract.md) | 500 元、500.01 元以及重复提交应如何处理？ | 动作契约、幂等和付款失败补偿 |
-| [6. 整理判断依据](artifacts/06-rule-assets.md) | “签收后 24 小时内”怎样变成可执行规则？ | 时间字段、规则适用范围、测试与审核 |
+| [6. 整理判断依据](artifacts/06-rule-assets.md) | “签收超过 24 小时”怎样变成可执行规则？ | 时间字段、规则适用范围、测试与审核 |
 | [7. 验证权限](artifacts/07-identity-and-permissions.md) | 业务条件全部通过，陌生 Agent 能批准吗？ | 执行主体检查与业务条件检查 |
 | [8. 处理协作分歧](artifacts/08-multi-agent-coordination.md) | 退款 Agent 同意，风控 Agent 要求复核，如何裁决？ | 任务委托、意见保留与冲突优先级 |
 | [9. 评估和复盘](artifacts/09-evaluation-audit-and-incident-replay.md) | 申请已批准，付款指令创建失败，该怎样恢复？ | 决策记录、故障补偿与回归测试 |

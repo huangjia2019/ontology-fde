@@ -33,7 +33,7 @@ def build_parser() -> argparse.ArgumentParser:
     inspect = sub.add_parser("inspect", help="Read the normalized facts for one refund")
     inspect.add_argument("refund_id")
 
-    graph = sub.add_parser("graph", help="Generate a live object graph as JSON")
+    graph = sub.add_parser("graph", help="Generate an object graph from local sample data as JSON")
     graph.add_argument("--refund-id")
     graph.add_argument("--output", type=Path)
 
@@ -64,7 +64,7 @@ def build_parser() -> argparse.ArgumentParser:
     extract.add_argument("--output", type=Path)
 
     demo = sub.add_parser(
-        "demo", help="Run the complete case and write replayable artifacts"
+        "demo", help="Export example runs, decision records, an object graph, and test reports"
     )
     demo.add_argument("--output", type=Path, default=Path("artifacts/demo"))
 
@@ -82,8 +82,8 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser(
         "exit-drill",
         help=(
-            "Rehearse disabling Write, revoking credentials, restoring human "
-            "control, retaining audit evidence, and checking continuity"
+            "Check local configuration and handoff documents for shutdown readiness. "
+            "Credential revocation and task transfer require action in the connected systems."
         ),
     )
 

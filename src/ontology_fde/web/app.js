@@ -131,7 +131,7 @@ async function perform(action) {
   if (state.busy) return;
   setBusy(true); message("");
   try { await action(); }
-  catch (error) { message(`本次操作未完成：${error.message || error}。若刚才点击了执行，请先刷新核对状态，不要假定没有写入。`, true); }
+  catch (error) { message(`操作报错：${error.message || error}。如果刚才执行请求超时，操作可能已经完成而响应未返回。请刷新查看申请和付款指令的状态，再决定是否重试。`, true); }
   finally { setBusy(false); }
 }
 
@@ -268,13 +268,13 @@ function effectSummary(record, draft) {
   }
   const explanations = {
     auto_approved:"申请已批准，模拟付款指令已创建，尚无到账回执。",
-    queued_for_human:"申请已进入人工审核队列，审批材料已创建，尚未批准。",
-    compensated:"批准结果保留，申请进入待财务处理状态，并建立财务人工任务。失败的退款指令尚未完成，资金没有退回。",
+    queued_for_human:"审批材料已创建，等待人工核实并批准退款。人工批准之前，暂不生成付款指令。",
+    compensated:"申请已批准，但模拟付款指令创建失败。已登记待付款状态，并生成财务任务，供财务核查失败原因和继续处理。",
     evidence_requested:"已建立补证请求草稿。退款申请状态未变，尚未向客户发送消息。",
     permission_denied:"主体或动作未获授权，业务对象未修改。",
     missing_data:"必要事实缺失或未确认，未执行退款动作。",
     not_ready:"申请当前状态不允许执行，未修改业务对象。",
-    task_expired:"任务授权已过期，必须重新委托。申请和关联业务对象均未修改。",
+    task_expired:"任务授权已过期，本次执行被拒绝，业务对象保持原样。继续办理前，需要委托方重新确认任务范围和授权期限。",
     no_action:"申请已经结束，本次没有再执行业务动作。"
   };
   return explanations[record.outcome] || record.actual_effect;
@@ -317,7 +317,8 @@ async function runMode(mode) {
 
 function approvalLabel(record) {
   if (record.mode === "draft") return "尚未执行，仅生成建议";
-  if (["auto_approved","compensated"].includes(record.outcome)) return "已批准；到账另行确认";
+  if (record.outcome === "auto_approved") return "已批准，模拟付款指令已创建";
+  if (record.outcome === "compensated") return "已批准，指令创建失败，待财务处理";
   if (record.outcome === "queued_for_human") return "尚未批准，待人工审核";
   return "本次未批准退款";
 }
@@ -349,7 +350,7 @@ function renderAudit() {
     <code>${escapeHtml(call.tool_name)}</code><small>${escapeHtml(phases[call.phase]||call.phase)} · ${escapeHtml(call.target)}</small>
   </div>`).join("");
   const conflict=record.conflict_resolution;
-  document.querySelector("#agentConflict").innerHTML=conflict?`<div class="conflict-card"><b>退款建议与风控意见冲突</b><div class="conflict-flow"><b>退款助手建议批准</b><i>风控要求优先 →</i><b>${escapeHtml(conflict.winner === "RiskAgent:block" ? "拦截并转人工" : conflict.winner === "RiskAgent:review" ? "转人工复核" : conflict.winner)}</b></div><p>风控要求复核或拦截时，退款助手不能自行放行。依据：${escapeHtml(conflict.policy_id)}</p></div>`:"";
+  document.querySelector("#agentConflict").innerHTML=conflict?`<div class="conflict-card"><b>退款建议与风控意见冲突</b><div class="conflict-flow"><b>退款助手建议批准</b><i>风控要求优先 →</i><b>${escapeHtml(conflict.winner === "RiskAgent:block" ? "拦截并转人工" : conflict.winner === "RiskAgent:review" ? "转人工复核" : conflict.winner)}</b></div><p>一般退款条件已通过，但风控提出的风险仍需核实，申请转交人工审批。裁决规则：${escapeHtml(conflict.policy_id)}</p></div>`:"";
   document.querySelector("#auditJson").textContent=JSON.stringify(record,null,2);
 }
 
@@ -370,9 +371,9 @@ function renderEvaluation() {
   const kindLabels={positive:"符合规则",negative:"不符合规则",boundary:"边界值",missing_data:"缺少数据",out_of_scope:"范围外"};
   const actualLabels={match:"命中",no_match:"未命中",missing_data:"缺少数据",out_of_scope:"范围外"};
   document.querySelector("#ruleCases").innerHTML=validation.validation_types.operational.cases.map(row=>`<span class="case-pill ${row.passed?"pass":""}">${escapeHtml(kindLabels[row.kind]||row.kind)} · ${escapeHtml(actualLabels[row.actual]||row.actual)}</span>`).join("");
-  const blockerLabels={missing_inputs_not_resolved:"开封状态等必要输入尚未补齐",human_review_not_completed:"业务负责人尚未审核",rule_not_compiled:"规则尚未编译"};
+  const blockerLabels={missing_inputs_not_resolved:"补齐开封状态等必要输入",human_review_not_completed:"请业务负责人确认规则",rule_not_compiled:"将草稿编译为可执行规则"};
   const blockers=(validation.production_blockers||[]).map(item=>blockerLabels[item]||item).join("；");
-  document.querySelector("#executionGuard").textContent=`候选规则不能进入生产执行：${blockers}。`;
+  document.querySelector("#executionGuard").textContent=`发布前尚需完成：${blockers}。`;
 }
 
 boot().catch(error => {

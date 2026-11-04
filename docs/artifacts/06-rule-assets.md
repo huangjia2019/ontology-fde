@@ -17,7 +17,7 @@
 处理动作：转人工复核
 ```
 
-24 小时整不满足“超过”。如果没有签收时间，时间差无法计算，应返回缺失数据，不能用 0 或当前时间补齐。对于 B2B 合同客户，这份候选规则不适用，要按合同政策继续处理。
+24 小时整不满足“超过”。如果缺少签收时间，应返回缺失数据；用当前时间代替签收时间，会把一笔可能早已超时的申请误算成刚刚签收。对于 B2B 合同客户，要按合同政策继续处理。
 
 还有一个尚未解决的问题：模型没有显式提供商品“已开封”的事实。草稿在 `missing_inputs` 中记录 `opened_state_not_explicitly_modeled`。需要业务人员确定开封状态由谁提供、用什么材料确认，再由工程人员补充输入与验证。
 
@@ -34,8 +34,8 @@ python3 run.py extract-rule --output artifacts/ch06-rule-draft.json
 | 适用对象，签收超过 24 小时 | 命中规则 | 正常触发人工复核 |
 | 普通配件，签收已过 25 小时 | `no_match` | 商品类型不符合耗材条件 |
 | 恰好 24 小时 | `no_match` | 实现的是大于，不是大于等于 |
-| 缺少签收时间 | `missing_data` | 不用猜测值作决定 |
-| B2B 合同客户 | `out_of_scope` | 不把个人客户规则套用于合同客户 |
+| 缺少签收后的经过时长 | `missing_data` | 时限无法判断，需要补齐数据 |
+| B2B 合同客户 | `out_of_scope` | 该申请应交合同政策判断 |
 
 这些测试核对候选逻辑的行为。缺失的开封事实仍需解决，因此报告可以同时出现 `validation_complete: true` 和 `production_ready: false`。
 
@@ -47,11 +47,11 @@ python3 run.py extract-rule --output artifacts/ch06-rule-draft.json
 - `human_review_not_completed`：规则负责人尚未确认来源、适用范围和处理办法；
 - `rule_not_compiled`：草稿尚未转换为受检查的可执行规则。
 
-这几项对应不同的工作。补测试不能替代业务确认，修改状态为 `approved` 也不能让缺失字段自动出现。仓库的审核和编译逻辑会检查这些条件，见[规则实现](../../src/ontology_fde/rule_extraction.py)及其[测试](../../tests/test_rule_extraction.py)。
+业务负责人需要确认这条规则适用于哪些退款，并明确开封状态由谁提供、用什么材料核实。工程人员再接入该字段，检查缺失和冲突情况，才能让程序按规则执行。测试通过表示已有样例符合预期，这些尚未完成的工作仍须逐项完成。仓库的审核和编译逻辑会检查上述条件，见[规则实现](../../src/ontology_fde/rule_extraction.py)及其[测试](../../tests/test_rule_extraction.py)。
 
 ## 新草稿与当前策略的关系
 
-当前退款策略已有 R1–R5，分别处理耗材时限、发票、黑名单、退款频率和合同客户。它们在[规则配置](../../config/rules/refund_rules.yaml)和[策略程序](../../src/ontology_fde/policy.py)中实现。新草稿不会自动替换其中的 R1。
+当前退款策略已有 R1–R5，分别处理耗材时限、发票、黑名单、退款频率和合同客户。它们在[规则配置](../../config/rules/refund_rules.yaml)和[策略程序](../../src/ontology_fde/policy.py)中实现。生成草稿后，退款仍按这五条现有规则处理。若要采用新草稿，还需要完成审核并修改执行程序。
 
 例如，`YF-R-0602` 由当前策略判断为退款频率异常，命中 R4：
 

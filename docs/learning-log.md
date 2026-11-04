@@ -10,7 +10,7 @@ python3 run.py run YF-R-0311 --mode write
 
 申请金额为 347 元，但 ERP 返回 `not_found`。来源映射将发票状态设为 `unknown`，策略命中 `G-INVOICE-UNKNOWN`，执行后创建人工审批材料，状态为 `pending_human`。
 
-这次结果由发票状态决定。若要继续自动审批，需要取得能够确认发票状态的记录，再检查其余条件。仅提高金额上限不会改变这笔申请缺失发票事实的问题。
+这次结果由发票状态决定。要继续办理，需要财务补充发票状态及来源，审批人员再核对其余条件。提高金额上限仍解决不了缺少发票事实的问题。本地示例到生成审批材料为止，人工续办需接入实际审批流程。
 
 ## 相同业务为何因执行者不同而被拒绝
 
@@ -19,7 +19,7 @@ python3 run.py run YF-R-0500 --mode write
 python3 run.py run YF-R-0500 --mode write --actor agent.marketing.unknown
 ```
 
-两次运行使用相同初始业务数据。第一次批准并创建模拟付款指令，第二次命中 `G-ACTOR`，状态仍为 `pending_review`。
+每次运行都会重新读取样例文件，因此第二条命令处理的仍是待审核申请。第一次由退款 Agent 批准并创建模拟付款指令，第二次由未登记的营销 Agent 发起，命中 `G-ACTOR`。这样可以比较主体不同、业务条件相同的两次结果。
 
 | 比较项 | 退款 Agent | 未登记营销 Agent |
 |---|---|---|
@@ -47,6 +47,6 @@ python3 run.py run YF-R-0800 --mode write --simulate-payment-failure \
   --audit artifacts/payment-failure.jsonl
 ```
 
-JSONL 保存本次决策，不持久化业务状态。重复实验可使用不同文件名，并记录所用配置和版本。决策编号在引擎实例内顺序生成，跨进程比较时应结合文件、运行批次与 `trace_id`，不能仅凭相同编号认定是同一次操作。
+JSONL 保存本次决策，供事后比较；下一次运行的业务数据仍从样例文件读取。重复实验可使用不同文件名，并记录所用配置和版本。决策编号在每个引擎实例中从头编号，不同运行可能出现相同编号，因此比较时要结合文件、运行批次与 `trace_id` 确认是哪一次操作。
 
 [十站目录](book-map.md) · [FDE 实践](fde-playbook.md)

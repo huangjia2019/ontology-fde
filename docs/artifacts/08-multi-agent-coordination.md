@@ -27,7 +27,7 @@
 RiskAgent:block > RiskAgent:review > RefundAgent:approve
 ```
 
-退款助手回答的是商品、发票和金额是否满足一般条件，风控回答的是这次交易是否需要额外审查。两份意见依据不同，不能靠投票取多数。冲突策略将风险复核作为自动批准的限制条件。当前程序以确定性逻辑生成候选意见并裁决，不调用独立模型服务。
+退款助手回答的是商品、发票和金额是否满足一般条件，风控回答的是这次交易是否需要额外审查。一般条件通过，设备关联风险仍然存在；即使更多助手赞成退款，也没有解释这个风险。因此，冲突策略要求先完成风险复核，才有可能批准。当前程序以确定性逻辑生成候选意见并裁决，不调用独立模型服务。
 
 ```bash
 python3 run.py run YF-R-0610 --mode write \
@@ -35,11 +35,11 @@ python3 run.py run YF-R-0610 --mode write \
 python3 run.py checkpoint 8 --check
 ```
 
-运行后，申请由 `pending_review` 变成 `pending_human`，创建审批材料 HAP-0610，没有付款指令。结果中的 `agent_candidates` 保留两个意见，`conflict_resolution` 记录哪项意见被采用、哪项被覆盖，以及裁决策略 `POL-AGENT-CONFLICT-001`。
+运行后，申请由 `pending_review` 变成 `pending_human`，创建审批材料 HAP-0610。风险核实并获得人工批准之前，暂不创建付款指令。结果中的 `agent_candidates` 保留两个意见，`conflict_resolution` 记录哪项意见被采用、哪项被覆盖，以及裁决策略 `POL-AGENT-CONFLICT-001`。
 
 保留被覆盖的意见有实际用途：人工复核时可以看到，一般退款条件已通过，待处理的是设备关联风险。若只保存最后一句“转人工”，接手人就要重新查询前面已经核对过的材料。
 
-JSONL 文件会追加本次结果，不会保存或恢复整套业务状态。多轮练习可换文件名留档。
+JSONL 文件追加保存本次判断与执行结果，供之后查看。重新运行命令时，申请数据仍从初始样例文件读取，详见[状态与审计](../architecture.md#本地状态时间与审计)。
 
 ## 优先级从哪里来
 

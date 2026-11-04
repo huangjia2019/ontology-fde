@@ -7,7 +7,7 @@
 | 执行主体 | `agent.cs.refund.001` 以自身身份执行，不借用主管账号 | [身份配置](../../config/identity/refund_agent.yaml) |
 | 处理对象 | 申请关联客户、订单和订单项，三者必须一致 | [对象与状态](../../config/ontology/) |
 | 业务动作 | 批准、转人工或补证，均有对应前提与效果 | [动作契约](../../config/actions/) |
-| 判断依据 | 未知发票转人工，不能把 ERP 查无记录当作未开票 | [规则资产](06-rule-assets.md) |
+| 判断依据 | ERP 查无记录记为发票未知，交财务核实是否开票 | [规则资产](06-rule-assets.md) |
 | 授权范围 | 自动批准限额 500 元，禁止修改申请金额 | [权限配置](../../config/policies/permissions.yaml) |
 | 失败处理 | 付款指令失败进入待付款状态，生成财务任务 | [评估与复盘](09-evaluation-audit-and-incident-replay.md) |
 

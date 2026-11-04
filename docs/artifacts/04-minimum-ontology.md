@@ -38,13 +38,13 @@ python3 run.py inspect YF-R-0311
 python3 run.py graph --refund-id YF-R-0311
 ```
 
-不同系统还有各自的编号。售后系统的 `AS-RMA-250311` 对应本项目的 `YF-R-0311`，映射记录见[source_crosswalk.json](../../data/mock/source_crosswalk.json)。映射关系必须有来源，不能仅凭客户姓名相同就合并记录。
+不同系统还有各自的编号。售后系统的 `AS-RMA-250311` 对应本项目的 `YF-R-0311`，映射记录见[source_crosswalk.json](../../data/mock/source_crosswalk.json)。客户可能同名，仅凭姓名合并会把两个人的订单混在一起。因此，应使用经业务系统确认的编号映射来关联记录。
 
 ## 字段值还需要解释来源
 
 发票状态来自 ERP，退款状态来自售后系统，商品和签收信息来自商城。字段的权威来源在[source_map.yaml](../../config/ontology/source_map.yaml)中约定。
 
-对订单 `O-9938`，ERP 返回 `not_found`。它只表示本次查询没有找到记录，不能据此认定没有开票。来源映射保留 `unknown`，而自动退款规则只接受 `none` 或 `reversed`。
+对订单 `O-9938`，ERP 返回 `not_found`。记录可能尚未同步，也可能确实未开票，本次查询还无法区分。来源映射保留 `unknown`，等待财务核实；自动退款规则接受的状态是已确认未开票 `none` 或已冲红 `reversed`。
 
 ```text
 ERP 没查到记录             财务确认未开票          发票已冲红
@@ -55,7 +55,7 @@ invoice_status=unknown    invoice_status=none     invoice_status=reversed
 转人工核实                           继续检查其他退款条件
 ```
 
-如果在接数据时就把未知值填成“未开票”，后面的策略无法恢复丢失的差别。因此，来源映射要和业务规则一起审查。配置中的数据新鲜度要求，也需要由真实连接器实现；本地文件不会自动向 ERP 刷新。
+如果在接数据时就把未知值填成“未开票”，后面的策略无法恢复丢失的差别。因此，来源映射要和业务规则一起审查。本地文件保存的是固定样例；接入真实 ERP 后，还需要在批准前检查查询时间，按配置中的新鲜度要求重新查询过期数据。
 
 ## 把不同业务结果分成不同状态
 

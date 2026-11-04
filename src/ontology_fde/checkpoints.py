@@ -30,7 +30,7 @@ CHECKPOINTS: dict[int, CheckpointSpec] = {
         ),
         ("python3 run.py inspect YF-R-0311",),
         (
-            "ERP 的 not_found 观测保留在来源记录中；发票状态映射为 unknown，禁止自动批准。",
+            "ERP 的 not_found 观测保留在来源记录中；发票状态映射为 unknown，转人工核实是否开票，再决定是否批准。",
         ),
     ),
     2: CheckpointSpec(
@@ -88,7 +88,7 @@ CHECKPOINTS: dict[int, CheckpointSpec] = {
             "python3 run.py run YF-R-0501 --mode write",
         ),
         (
-            "其他条件通过时，500 元可批准并创建模拟付款指令；500.01 元转人工，不创建付款指令。批准不等于到账。",
+            "其他条件通过时，500 元可批准并创建模拟付款指令；500.01 元转人工，等待人工批准后再进入付款流程。真实到账要以支付结果为依据。",
             "Read 和 Draft 不改变业务状态；Write 重新读取事实、检查授权与业务条件后执行动作。",
             "写入路径中的执行、拒绝与转人工结果均有 DecisionRecord，能核对前后状态和实际效果。",
         ),
@@ -109,7 +109,7 @@ CHECKPOINTS: dict[int, CheckpointSpec] = {
             "python3 run.py run YF-R-0602 --mode draft",
         ),
         (
-            "24 小时整不命中；缺少签收时间返回 missing_data；B2B 返回 out_of_scope。草稿保留缺失输入、人工审核和编译三个发布阻断项。",
+            "24 小时整不命中；缺少签收后的经过时长返回 missing_data；B2B 返回 out_of_scope。采用草稿前仍要补齐输入、完成业务审核和规则编译。",
         ),
     ),
     7: CheckpointSpec(
@@ -144,7 +144,7 @@ CHECKPOINTS: dict[int, CheckpointSpec] = {
             "--audit artifacts/ch08-decision-records.jsonl",
         ),
         (
-            "ENV-T-0610 可追踪；RiskAgent:review 覆盖 RefundAgent:approve，两项意见均保留。退款进入 pending_human，创建人工审批材料，不创建付款指令。",
+            "ENV-T-0610 可追踪；RiskAgent:review 覆盖 RefundAgent:approve，两项意见均保留。退款进入 pending_human，创建人工审批材料；风险核实并获得人工批准之前，暂不创建付款指令。",
         ),
     ),
     9: CheckpointSpec(
@@ -163,7 +163,7 @@ CHECKPOINTS: dict[int, CheckpointSpec] = {
             "--simulate-payment-failure --audit artifacts/ch09-failure.jsonl",
         ),
         (
-            "36 个核心策略样例与 2 个事故回放通过；付款指令创建失败后进入补偿状态，记录失败与补偿调用。策略回放不替代执行器的端到端测试。",
+            "36 个核心策略样例与 2 个事故回放通过，验证给定事实下的策略判断；执行器测试另行验证付款指令创建失败后的状态、失败记录和财务任务。",
         ),
     ),
     10: CheckpointSpec(
@@ -184,7 +184,7 @@ CHECKPOINTS: dict[int, CheckpointSpec] = {
             "python3 run.py exit-drill",
         ),
         (
-            "退出检查覆盖写入停用、凭据撤销、未完成任务移交、审计保留和人工处理流程。本地只校验配置及交接资料，不执行真实系统变更。",
+            "检查配置及交接资料中是否具备写入停用、凭据撤销、未完成任务移交、审计保留和人工处理安排。实际停用需由各系统负责人执行并确认结果。",
         ),
     ),
 }

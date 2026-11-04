@@ -130,7 +130,7 @@
         </article>
       </div>
     </section>
-    <p class="session-note">业务状态保存在服务进程内存中，多个页面共享。刷新只清空当前页面的决策显示；重置或重启服务会恢复初始数据。</p>
+    <p class="session-note">服务运行期间会保留业务修改：在一个页面批准申请后，其他页面再次查询也会看到已批准的状态。刷新页面会清空当前决策显示，但保留业务修改；重置演练或重启服务才恢复初始样例。</p>
   </main>
   <footer><span>云帆退款项目 · 本地教学演练</span><span>Read / Draft 不改业务状态 · Write 不发起真实支付</span></footer>
   <script src="app.js"></script>
