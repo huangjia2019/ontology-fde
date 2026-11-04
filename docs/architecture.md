@@ -4,19 +4,33 @@
 
 ```mermaid
 flowchart TD
-    A[本地样例：客户、订单、售后、财务、工单、风控、证据、付款] --> B[repository.py：关联编号，保留来源]
-    B --> C[Read：返回当前退款事实]
-    C --> D[Draft：校验条件，形成候选动作]
-    P[身份、动作契约、规则与冲突策略] --> D
-    D --> E{Write 执行前检查}
-    E -->|事实缺失、主体不符或委托过期| F[停止或形成补充材料请求]
-    E -->|需人决定| G[人工审批材料；pending_human]
-    E -->|全部条件通过| H[批准；创建模拟付款指令]
-    H -->|指令创建失败| I[approval_pending_payment；财务任务]
-    F --> J[DecisionRecord：依据、动作、结果与调用顺序]
-    G --> J
-    H --> J
-    I --> J
+    S["本地来源记录：客户、订单、售后、ERP、风控与证据"] --> O["get_case：按编号关联，核对关系，保留来源"]
+    O --> M{"运行模式"}
+    M -->|read| R["返回事实，业务状态不变"]
+    M -->|draft 或 write| P["检查任务委托与退款规则，形成候选动作"]
+    C["身份、动作契约、来源映射与冲突策略"] --> P
+    P --> D{"是否执行"}
+    D -->|draft| N["返回建议，业务状态不变"]
+    D -->|write| W{"写入授权与条件检查"}
+    W -->|主体不符或委托过期| X["拒绝执行"]
+    W -->|证据不足| Q["创建补证请求草稿"]
+    W -->|发票未知、金额越界或风险待核实| H["创建人工审批材料，pending_human"]
+    W -->|批准条件全部通过| A["申请获批，创建模拟付款指令"]
+    A -->|创建指令失败| F["approval_pending_payment，生成财务任务"]
+    N --> DR["DecisionRecord：判断依据、前后状态、实际效果"]
+    X --> DR
+    Q --> DR
+    H --> DR
+    A --> DR
+    F --> DR
+    classDef source fill:#FFF1D4,stroke:#A96B12,color:#55330A;
+    classDef model fill:#E7F3FA,stroke:#2F799D,color:#173B50;
+    classDef stop fill:#FCEBE6,stroke:#BD624B,color:#632E23;
+    classDef record fill:#E9F4EC,stroke:#4E8A5D,color:#21452A;
+    class S source;
+    class O,P,C,W model;
+    class X,Q,H,F stop;
+    class DR record;
 ```
 
 这是离线参考实现：没有大模型调用，没有远程 CRM、ERP 或支付接口。样例数据读入内存，规则和动作由 Python 程序执行。图中的系统名表示样例的来源角色。
@@ -45,7 +59,7 @@ flowchart TD
 | `draft` | 候选动作、规则命中、检查结果和决策记录 | 不批准退款，不创建付款指令；可以保存决策记录 |
 | `write` | 执行结果与决策记录 | 经检查后，在内存中创建待办、推进状态或创建模拟付款指令 |
 
-`write` 内部会经过事实读取与判断，读者无需先运行两个命令为它“解锁”。`YF-R-0500` 在其他条件通过时可以批准；`YF-R-0501` 的 500.01 元会转人工。金额上限只是其中一项条件，发票、证据、渠道、履约和风控也必须通过。
+`write` 在一次调用中完成事实读取、判断和动作执行。`YF-R-0500` 在其他条件通过时可以批准；`YF-R-0501` 的 500.01 元会转人工。金额上限只是其中一项条件，发票、证据、渠道、履约和风控也必须通过。
 
 主要入口是 [engine.py](../src/ontology_fde/engine.py)。审批成功后的退款状态为 `approved`；付款指令状态为 `created`，尚未表示到账。创建指令失败会保留失败记录，将退款转入 `approval_pending_payment`，并生成财务任务。
 
@@ -82,6 +96,6 @@ flowchart TD
 | JSONL 决策记录 | 企业审计保存、访问控制、防篡改与检索 |
 | 离线退出检查 | 各系统实际停用写入、撤销凭据、迁移待办与验证业务连续性 |
 
-权限文件声明了六个维度，当前代码没有把全部声明实现成安全基础设施。详见[权限验收卡](artifacts/07-identity-and-permissions.md)。参考程序的价值在于让这些问题有可读、可运行的讨论对象；生产验收还需要业务、技术和安全团队共同完成。
+权限文件声明了六个维度，当前代码没有把全部声明实现成安全基础设施。详见[权限验收卡](artifacts/07-identity-and-permissions.md)。
 
 继续阅读：[十站目录](book-map.md) · [架构图源文件](assets/architecture/yunfan-ontology-agent-system-evolution.mmd) · [测试口径](release-baseline.md)

@@ -1,44 +1,68 @@
-# 第 5 站：500 元可以批准，500.01 元怎么办
+# 第 5 站：把退款条件落实到动作契约
 
-`YF-R-0500` 和 `YF-R-0501` 的样例都具备可批准的其他条件，区别在于退款金额。前者 500 元，后者 500.01 元。请先猜一下它们的状态会怎样变化，再运行程序。
+`YF-R-0500` 与 `YF-R-0501` 的其他审批条件都满足，金额分别为 500 元和 500.01 元。公司规定自动批准金额不得超过 500 元，因此这两笔申请走不同的处理路径。
 
 ```bash
 python3 run.py run YF-R-0500 --mode write
 python3 run.py run YF-R-0501 --mode write
 ```
 
-| 样例 | 动作 | 退款状态 | 产生的业务对象 |
+| 样例 | 执行动作 | 执行后的状态 | 新增记录 |
 |---|---|---|---|
-| 500 元且其他条件通过 | `approve_refund_small` | `approved` | 模拟付款指令 |
-| 500.01 元 | `request_human_refund_approval` | `pending_human` | 人工审批材料，不创建付款指令 |
+| 500 元，其他条件通过 | `approve_refund_small` | `approved` | 模拟付款指令 PI-0500 |
+| 500.01 元 | `request_human_refund_approval` | `pending_human` | 人工审批材料 HAP-0501 |
 | 证据不完整或未核验通过 | `request_missing_evidence` | 保持原状态 | 补充证据请求草稿 |
 
-## 动作契约规定什么
+## 契约如何约束一次批准
 
-[小额批准契约](../../config/actions/approve_refund_small.yaml)列出执行主体、输入、前提、效果、审批门槛、幂等、失败处理和审计要求。上限由其中的 `threshold_cny` 读取。客户渠道、发票、履约、证据、风控及退款频率也要检查，金额低于上限不等于允许批准。
+动作契约描述某个操作的输入、允许的执行主体、业务前提以及预期效果。[小额批准契约](../../config/actions/approve_refund_small.yaml)将这些要求放在同一份定义里。
 
-[人工审批契约](../../config/actions/request_human_refund_approval.yaml)与[补证契约](../../config/actions/request_missing_evidence.yaml)分别规定另外两条路径。财务处理任务是付款失败后的补偿动作，没有作为第四个独立业务契约供 Agent 任意调用。
+以 500 元那笔申请为例，执行时需要核对退款编号、客户、订单和订单项。随后检查金额上限、签收状态、发票、风险、证据、渠道及退款频率。全部通过后，才修改申请状态并生成付款指令。
 
-契约中的主管角色是外部人工流程的声明。CLI 没有实现主管审批入口，不能用 `role:cs_supervisor` 冒充已经认证的真人。
+```text
+approve_refund_small
+  输入：退款、客户、订单、订单项、金额、证据引用
+  主体：获准调用此动作的 Agent
+  条件：待审核 + 金额 ≤ 500 元 + 其他业务条件全部满足
+  效果：退款申请获批 + 创建付款指令 + 记录决策
+  失败：保留已发生的审批，登记待付款状态和财务任务
+```
 
-## 先建议，再检查业务写入
+金额上限从契约的 `threshold_cny` 读取。其他判断由[退款策略](../../src/ontology_fde/policy.py)和[执行引擎](../../src/ontology_fde/engine.py)实现。修改契约中的自然语言描述不会自动改变这些判断。
+
+超过金额上限仍然需要继续处理业务，因此另有[人工审批契约](../../config/actions/request_human_refund_approval.yaml)。它允许创建审批材料，但不能自动批准，也不能创建付款指令。[补证契约](../../config/actions/request_missing_evidence.yaml)则生成补证请求。
+
+契约中声明的 `role:cs_supervisor` 表示外部人工审批角色。CLI 不提供真人认证，传入这个字符串不能获得主管权限。
+
+## 建议与执行的区别
 
 ```bash
 python3 run.py run YF-R-0500 --mode read
 python3 run.py run YF-R-0500 --mode draft
 ```
 
-`read` 返回事实，`draft` 返回候选判断和决策记录；两者都不改变退款状态。`write` 会重新读取并检查事实，在当前进程中执行允许的动作。三条 CLI 命令是三个独立实验，不会共享前一条命令的业务状态。
+Read 返回事实。Draft 会给出批准建议，但退款仍为 `pending_review`，也没有付款指令。Write 会重新读取事实并核验条件，然后执行操作。三个模式用于不同的权限和交互需要，不要求先后调用。
 
-## 已经批准，付款指令创建失败
+CLI 每条命令启动独立进程，使用初始样例。要观察连续操作，可以在同一个 Web 服务进程中运行，或阅读[执行器测试](../../tests/test_engine.py)。
+
+## 批准后为什么还需要补偿
 
 ```bash
 python3 run.py run YF-R-0800 --mode write --simulate-payment-failure
+```
+
+这笔申请的审批条件全部通过，程序先完成批准，随后创建付款指令 PI-0800 失败。记录中的 `outcome` 为 `compensated`，退款进入 `approval_pending_payment`，同时生成财务任务 FMT-0800。
+
+这里不能把申请退回“尚未审批”，因为审批确实发生过；也不能标记“已退款”，因为付款尚未完成。财务任务保存失败原因与关联对象，供后续核查和继续处理。它是这次失败的补偿结果，不是任意 Agent 都能调用的第四种业务动作。
+
+## 相同请求重试会怎样
+
+网络超时可能让调用方重复提交同一个请求。引擎使用 `intent_id` 标识这次操作意图：在同一引擎实例中，用相同身份重放同一个意图，会返回原决策记录，附上 `idempotent_replay: true`，不再创建一笔付款指令。其他身份不能取用这份结果。
+
+这项检查解决的是同一实例内的重复请求。跨进程运行需要把幂等记录与业务写入持久化，并处理并发；本地每次重启 CLI 都会重新加载样例。
+
+```bash
 python3 run.py checkpoint 5 --check
 ```
 
-检查 `state_after` 是否为 `approval_pending_payment`，调用记录是否包含付款指令创建失败和后续补偿，是否形成财务任务。失败的付款指令仍被保留以便核查；不能把这次运行写成“退款完成”。请财务判断这份任务是否足以继续处理。
-
-重试还有一项要求：同一引擎实例内，相同 `intent_id` 返回原来的决策记录，标记 `idempotent_replay: true`，不重复创建业务对象。[执行器测试](../../tests/test_engine.py)验证这个行为。跨进程、跨服务器的幂等需要真实存储与交易设计，本地重复运行 CLI 不会替你验证这一层。
-
-完成时，请客服主管和财务分别核对“批准的条件”和“批准之后发生什么”。[返回十站目录](../book-map.md)。
+[下一站：规则如何形成](06-rule-assets.md) · [返回十站目录](../book-map.md)。

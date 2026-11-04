@@ -22,7 +22,7 @@ CHECKPOINTS: dict[int, CheckpointSpec] = {
     1: CheckpointSpec(
         1,
         "项目定位：跟完一笔退款",
-        "从遥控器单查业务对象、事实来源与自动化边界。仓库提供十站完成后的离线参考程序；检查卡用于学习和验收，不会逐站开放功能。",
+        "347 元退款的发票查询返回 not_found，为什么应转人工核实？",
         (
             "docs/artifacts/01-field-walkthrough.md",
             "docs/artifacts/01-ontology-positioning-card.md",
@@ -30,7 +30,7 @@ CHECKPOINTS: dict[int, CheckpointSpec] = {
         ),
         ("python3 run.py inspect YF-R-0311",),
         (
-            "能找到七条对象记录和一次 ERP 查无记录的观测；发票状态保留为 unknown，由财务补充确认，不能自动批准。",
+            "ERP 的 not_found 观测保留在来源记录中；发票状态映射为 unknown，禁止自动批准。",
         ),
     ),
     2: CheckpointSpec(
@@ -89,14 +89,14 @@ CHECKPOINTS: dict[int, CheckpointSpec] = {
         ),
         (
             "其他条件通过时，500 元可批准并创建模拟付款指令；500.01 元转人工，不创建付款指令。批准不等于到账。",
-            "Read 和 Draft 不改变业务状态；Write 在内部完成事实读取和条件检查，无需先运行两个命令解锁。",
+            "Read 和 Draft 不改变业务状态；Write 重新读取事实、检查授权与业务条件后执行动作。",
             "写入路径中的执行、拒绝与转人工结果均有 DecisionRecord，能核对前后状态和实际效果。",
         ),
     ),
     6: CheckpointSpec(
         6,
         "规则来源与草稿",
-        "对照正式政策与老陈的经验，检查候选规则的来源、范围和发布条件。本例使用固定语料与确定性提取逻辑，不调用模型，也不自动发布新规则。",
+        "把签收超过 24 小时的政策绑定到申请时间、签收时间和商品状态，并验证时间边界与缺失数据。",
         (
             "docs/artifacts/06-rule-assets.md",
             "config/rules/refund_rules.yaml",
@@ -109,13 +109,13 @@ CHECKPOINTS: dict[int, CheckpointSpec] = {
             "python3 run.py run YF-R-0602 --mode draft",
         ),
         (
-            "四类校验与五类样例通过，草稿仍因输入未补齐、人工审核未完成、尚未编译而不能执行。已有 R4 的建议命中可另行观察。",
+            "24 小时整不命中；缺少签收时间返回 missing_data；B2B 返回 out_of_scope。草稿保留缺失输入、人工审核和编译三个发布阻断项。",
         ),
     ),
     7: CheckpointSpec(
         7,
         "身份与六维权限验收",
-        "检查数据、工具、动作、条件、时间和环境的授权约定。本地已实现主体和业务动作等检查；字段权限、真实凭据与环境准入仍需企业系统集成。",
+        "同一笔 500 元申请，已授权退款 Agent 可以批准，未登记 Agent 必须被拒绝。",
         (
             "docs/artifacts/07-identity-and-permissions.md",
             "config/identity/refund_agent.yaml",
@@ -126,13 +126,13 @@ CHECKPOINTS: dict[int, CheckpointSpec] = {
             "python3 tools/verify.py",
         ),
         (
-            "未知主体触发 G-ACTOR，退款状态和付款对象均不改变；权限文件声明生产写入关闭，但不能把全部声明当成已完成的认证授权设施。",
+            "未知主体触发 G-ACTOR，退款状态和付款对象均不改变。完整的企业认证与权限集成范围见第 7 站。",
         ),
     ),
     8: CheckpointSpec(
         8,
         "任务信封与冲突裁决",
-        "围绕同一笔退款保留退款助手与风控的不同意见，检查委托范围、主体、期限和裁决结果。本例的角色协作用确定性程序呈现。",
+        "280 元申请的一般退款条件通过，但风控要求复核。按冲突策略转人工，同时保留两项意见。",
         (
             "docs/artifacts/08-multi-agent-coordination.md",
             "docs/artifacts/08-task-envelope-YF-R-0610.json",
@@ -169,7 +169,7 @@ CHECKPOINTS: dict[int, CheckpointSpec] = {
     10: CheckpointSpec(
         10,
         "运行交接、场景复制与退出",
-        "由接管团队核对运行资料、人工接手方式和退出安排。exit-drill 检查静态配置与交接材料，不执行真实凭据撤销、工单迁移或业务连续性交易。",
+        "付款失败后如何找到财务任务、失败指令和决策记录？停用自动执行时，未完成退款由谁接手？",
         (
             "docs/artifacts/10-operations-handoff-and-replication.md",
             "docs/fde-playbook.md",
@@ -184,7 +184,7 @@ CHECKPOINTS: dict[int, CheckpointSpec] = {
             "python3 run.py exit-drill",
         ),
         (
-            "能区分可复用结构与新场景待建内容；退出检查覆盖关闭写入、撤销凭据、交还未完成工作、保留证据与连续性安排。五步 PASS 只说明本地检查通过，现场还需执行回执。",
+            "退出检查覆盖写入停用、凭据撤销、未完成任务移交、审计保留和人工处理流程。本地只校验配置及交接资料，不执行真实系统变更。",
         ),
     ),
 }

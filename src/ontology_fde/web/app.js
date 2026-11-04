@@ -95,7 +95,7 @@ const textLabels = {
   "Verify refund evidence": "核验退款证据", "Evaluate refund policy": "检查退款规则", "Resolve agent proposals": "处理建议冲突",
   "Update refund state": "更新退款状态", "Create refund instruction": "创建退款指令",
   "Enter payment compensation state": "转入待财务处理状态", "Create finance manual task": "建立财务人工任务",
-  "Create human approval packet": "建立人工审批材料", "Draft evidence request": "拟定补证请求", "Enforce write guard": "执行写入守卫"
+  "Create human approval packet": "建立人工审批材料", "Draft evidence request": "拟定补证请求", "Enforce write guard": "核验写入授权"
 };
 
 function escapeHtml(value) {
@@ -165,14 +165,14 @@ function bindEvents() {
     state.lastRun = null;
     document.querySelector("#paymentFailure").checked = false;
     await refreshCase();
-    message("所有申请已恢复到初始演练状态。之前复制到页面外的学习记录不受影响。");
+    message("所有申请已恢复初始状态。");
   }));
   document.querySelector("#copyAudit").addEventListener("click", async () => {
-    if (!state.lastRun?.decision_record) return message("先生成建议或执行模拟，才有决策记录可以复制。");
+    if (!state.lastRun?.decision_record) return message("尚无可复制的决策记录。");
     try {
       if (!navigator.clipboard) throw new Error("clipboard unavailable");
       await navigator.clipboard.writeText(document.querySelector("#auditJson").textContent);
-      message("决策记录已复制，可以粘贴到自己的学习笔记中。");
+      message("决策记录已复制。");
     } catch { message("浏览器不允许自动复制，请选中右侧完整记录后手动复制。", true); }
   });
 }
@@ -185,10 +185,10 @@ function switchView(view) {
     node.setAttribute("aria-pressed", String(node.dataset.view === safe));
   });
   const copy = {
-    ontology: ["业务对象", "这笔申请关联了谁、哪张订单、什么证据？每项事实都能追到来源记录。"],
-    action: ["退款处理", "读取事实、形成建议、执行模拟。观察哪一步改变了业务状态，哪一步没有。"],
-    audit: ["决策记录", "谁作了决定，依据是什么，实际改了什么？沿着同一条追踪编号逐项核对。"],
-    evaluation: ["测试与评估", "用已知结果核对规则，再检查候选规则距离执行还缺哪些条件。"]
+    ontology: ["业务对象", "退款申请关联的客户、订单、商品与证据，以及各项事实的来源。"],
+    action: ["退款处理", "按业务条件选择批准、人工审核或补充证据，并记录状态变化。"],
+    audit: ["决策记录", "本次处理的来源依据、命中规则、执行动作与实际效果。"],
+    evaluation: ["测试与评估", "退款策略回归、事故回放与候选规则验证。"]
   }[safe];
   document.querySelector("#viewTitle").textContent = copy[0];
   document.querySelector("#viewSubtitle").textContent = copy[1];
@@ -261,17 +261,17 @@ function renderGraph() {
 }
 
 function effectSummary(record, draft) {
-  if (record?.metadata?.idempotent_replay) return "本次返回上一次执行的记录，没有重复写入。要从初始状态重做，请点击“重置演练”。";
+  if (record?.metadata?.idempotent_replay) return "相同操作意图已处理，本次返回原决策记录，无重复写入。";
   if (!record || record.mode === "draft") {
     const rules = (draft?.rule_hits || []).map(rule => ruleLabels[rule] || rule).join("；");
-    return `建议：${outcomeLabel(draft?.decision)}。${rules || "金额、证据、履约、发票、风控、频次和渠道检查均通过。"} 这里只形成建议，业务状态没有变化。`;
+    return `建议：${outcomeLabel(draft?.decision)}。${rules || "金额、证据、履约、发票、风控、频次和渠道检查均通过。"} 业务状态未变。`;
   }
   const explanations = {
-    auto_approved:"申请状态改为已批准，并创建了模拟退款指令。没有连接支付系统，也没有到账回执。",
-    queued_for_human:"申请已进入人工审核队列，并生成审批材料。系统没有代替审核人批准退款。",
+    auto_approved:"申请已批准，模拟付款指令已创建，尚无到账回执。",
+    queued_for_human:"申请已进入人工审核队列，审批材料已创建，尚未批准。",
     compensated:"批准结果保留，申请进入待财务处理状态，并建立财务人工任务。失败的退款指令尚未完成，资金没有退回。",
     evidence_requested:"已建立补证请求草稿。退款申请状态未变，尚未向客户发送消息。",
-    permission_denied:"写入已被拦截，没有修改业务对象。请查看权限和动作检查。",
+    permission_denied:"主体或动作未获授权，业务对象未修改。",
     missing_data:"必要事实缺失或未确认，未执行退款动作。",
     not_ready:"申请当前状态不允许执行，未修改业务对象。",
     task_expired:"任务授权已过期，必须重新委托。申请和关联业务对象均未修改。",
@@ -285,7 +285,7 @@ function renderAction() {
   document.querySelector("#caseBanner").innerHTML = `<strong>${escapeHtml(caseNames[f.refund_id] || f.refund_id)}</strong><span>${escapeHtml(f.refund_id)} · ${escapeHtml(textLabel(f.item_name))}</span><b>${amountLabel(f.amount)}</b>`;
   const box = document.querySelector("#actionOutcome");
   if (!state.lastRun) {
-    box.className = "outcome empty"; box.textContent = "先读取事实，再生成建议，最后观察执行会改变什么。";
+    box.className = "outcome empty"; box.textContent = "尚无处理结果。";
     document.querySelector("#checks").innerHTML = ""; document.querySelector("#rules").innerHTML = ""; renderPipeline([]); return;
   }
   const draft = state.lastRun.draft, record = state.lastRun.decision_record;
@@ -327,7 +327,7 @@ function renderAudit() {
   if (!record) {
     document.querySelector("#traceIdBadge").textContent="尚无记录";
     document.querySelector("#auditHeadline").className="audit-headline empty";
-    document.querySelector("#auditHeadline").textContent="生成建议或执行模拟后，这里会列出依据、规则和结果。只读取事实不会生成决策记录。";
+    document.querySelector("#auditHeadline").textContent="尚无决策记录。Read 只返回事实；Draft 和 Write 产生决策记录。";
     for (const id of ["auditTrace", "toolCalls", "agentConflict"]) document.getElementById(id).innerHTML="";
     document.querySelector("#auditJson").textContent='{ "status": "waiting_for_decision" }'; return;
   }
