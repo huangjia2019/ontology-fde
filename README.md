@@ -60,16 +60,16 @@ Read 返回业务事实。Draft 返回处理建议，申请仍处于 `pending_re
 
 | 站点 | 内容 |
 |---|---|
-| [1. 确定业务范围](docs/artifacts/01-ontology-positioning-card.md) | 业务目标、对象、来源与自动化范围 |
-| [2. 审视原有方案](docs/artifacts/02-historical-audit.md) | 从辅助建议到执行操作的风险审计 |
-| [3. 登记执行主体](docs/artifacts/03-identity-acceptance.md) | Agent 身份、归属与生命周期 |
-| [4. 建立最小本体](docs/artifacts/04-minimum-ontology.md) | 对象、关系、状态与来源映射 |
-| [5. 限定业务动作](docs/artifacts/05-action-contract.md) | 动作契约、幂等与补偿 |
-| [6. 整理判断依据](docs/artifacts/06-rule-assets.md) | 规则来源、适用范围与草稿审核 |
-| [7. 验证权限](docs/artifacts/07-identity-and-permissions.md) | 身份登记、授权配置与拒绝测试 |
-| [8. 处理协作分歧](docs/artifacts/08-multi-agent-coordination.md) | 任务委托、冲突裁决与人工交接 |
-| [9. 评估和复盘](docs/artifacts/09-evaluation-audit-and-incident-replay.md) | 决策记录、策略评估与事故回放 |
-| [10. 运行交接](docs/artifacts/10-operations-handoff-and-replication.md) | 运行维护、移交与退出检查 |
+| [1. 确定业务范围](docs/artifacts/01-ontology-positioning-card.md) | [347 元退款经过](docs/artifacts/01-field-walkthrough.md)、[系统诊断](docs/artifacts/01-six-question-diagnostic.md) |
+| [2. 审视原有方案](docs/artifacts/02-historical-audit.md) | 从辅助建议到执行操作：[读写检查](tests/test_engine.py)、[决策记录](src/ontology_fde/audit.py) |
+| [3. 登记执行主体](docs/artifacts/03-identity-acceptance.md) | [Agent 身份、归属与生命周期](config/identity/refund_agent.yaml) |
+| [4. 建立最小本体](docs/artifacts/04-minimum-ontology.md) | [对象](config/ontology/objects.yaml)、[关系](config/ontology/relationships.yaml)、[状态](config/ontology/state_machines.yaml)与[来源映射](config/ontology/source_map.yaml) |
+| [5. 限定业务动作](docs/artifacts/05-action-contract.md) | [动作契约](config/actions/README.md)、[幂等与补偿实现](src/ontology_fde/engine.py)、[执行测试](tests/test_engine.py) |
+| [6. 整理判断依据](docs/artifacts/06-rule-assets.md) | [规则来源与适用范围](config/rules/refund_rules.yaml)、[候选草稿](config/rules/drafts/opened_consumable_rule_draft.json)、[草稿审核](src/ontology_fde/rule_extraction.py) |
+| [7. 验证权限](docs/artifacts/07-identity-and-permissions.md) | [身份登记](config/identity/refund_agent.yaml)、[授权配置](config/policies/permissions.yaml)与[拒绝测试](tests/test_release_guards.py) |
+| [8. 处理协作分歧](docs/artifacts/08-multi-agent-coordination.md) | [任务委托](docs/artifacts/08-task-envelope-YF-R-0610.json)、[冲突裁决](config/policies/conflict_resolution.yaml)与[转人工契约](config/actions/request_human_refund_approval.yaml) |
+| [9. 评估和复盘](docs/artifacts/09-evaluation-audit-and-incident-replay.md) | [决策记录](src/ontology_fde/audit.py)、[策略评估](src/ontology_fde/evaluator.py)与[事故回放](config/evals/incident_replays.json) |
+| [10. 运行交接](docs/artifacts/10-operations-handoff-and-replication.md) | [交接清单](docs/artifacts/10-operations-handoff-and-replication.md#本地交接练习)、[综合验证](tools/verify.py)与[退出资料检查](src/ontology_fde/exit_drill.py) |
 
 第 4 站的检查确认五份文件存在、对象目录声明了 `RefundRequest`，以及状态机包含 `approved → approval_pending_payment` 这条补偿转换：
 
@@ -134,4 +134,4 @@ python3 run.py evaluate --output artifacts/evaluation-report.json
 
 ## 问题反馈
 
-请在 [Issues](https://github.com/huangjia2019/ontology-fde/issues) 提供环境、复现命令及预期与实际结果，勿上传密钥或客户数据。
+欢迎在 [Issues](https://github.com/huangjia2019/ontology-fde/issues) 提供反馈。

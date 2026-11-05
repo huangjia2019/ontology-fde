@@ -37,13 +37,13 @@ python3 run.py checkpoint 10 --check
 4. 保留审计证据（Preserve audit evidence）：保留身份版本、权限快照、契约、规则、决策与事故记录。
 5. 验证业务连续性（Verify business continuity）：由人工渠道处理一笔测试业务，检查停用主体是否仍有写入。
 
-`exit-drill` 检查的是下表中的配置和文字，不执行上述停用操作：
+[`exit-drill`](../../src/ontology_fde/exit_drill.py) 检查的是下表中的配置和文字，不执行上述停用操作：
 
 | 项目 | 程序实际检查的条件 |
 |---|---|
-| 关闭写入 | 权限配置的 `production_write` 为 `false`；这个字段记录授权要求，并非已接入生产网关的开关 |
+| 关闭写入 | [权限配置](../../config/policies/permissions.yaml)的 `production_write` 为 `false`；这个字段记录授权要求，并非已接入生产网关的开关 |
 | 撤销凭据 | `security_principal` 以 `workload://` 开头，且本文包含 `Revoke credentials` |
-| 移交工作 | 转人工契约的动作编号为 `request_human_refund_approval`，且本文包含 `Return unfinished work to people` |
+| 移交工作 | [转人工契约](../../config/actions/request_human_refund_approval.yaml)的动作编号为 `request_human_refund_approval`，且本文包含 `Return unfinished work to people` |
 | 保留证据 | 身份配置引用 `POL-AUDIT-RETENTION`，且 `audit.py` 文件存在 |
 | 业务连续性 | 本文包含 `Verify business continuity`，且转人工契约的第一项效果声明为 `RefundRequest.status -> pending_human` |
 
@@ -66,4 +66,4 @@ python3 run.py checkpoint 10 --check
 
 以销售跟进为例，来源引用和决策记录结构可以沿用，但“给联系人发消息”需要新的动作契约：联系人是否允许触达、发送过几次、能否撤回。退款的金额上限和发票条件在这里没有意义，必须由新业务的限制替换。
 
-[FDE 现场练习](../fde-playbook.md) · [返回十站目录](../book-map.md)。
+[综合验证](../../tools/verify.py) · [退出检查测试](../../tests/test_checkpoints.py) · [FDE 现场练习](../fde-playbook.md) · [返回十站目录](../book-map.md)。
